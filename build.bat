@@ -1,6 +1,6 @@
 @echo off
 REM Windows Multi-Monitor Display App - Build Script
-REM このスクリプトでPythonスクリプトをexeに変換します
+REM This script builds the Python script into a standalone .exe
 
 echo.
 echo ========================================
@@ -8,50 +8,50 @@ echo Windows Monitor Display App Builder
 echo ========================================
 echo.
 
-REM Python と pip の確認
+REM Check for Python
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo エラー: Pythonがインストールされていません
-    echo https://www.python.org からPythonをインストールしてください
+    echo [ERROR] Python is not installed or not on PATH.
+    echo Please install Python from https://www.python.org
+    echo Make sure to check "Add Python to PATH" during installation.
     pause
     exit /b 1
 )
 
-echo ステップ 1: 依存パッケージをインストール中...
+echo [Step 1] Installing dependencies...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
-    echo エラー: パッケージのインストールに失敗しました
+    echo [ERROR] Failed to install dependencies.
     pause
     exit /b 1
 )
 
 echo.
-echo ステップ 2: PyInstallerをインストール中...
+echo [Step 2] Installing PyInstaller...
 pip install pyinstaller
 if %errorlevel% neq 0 (
-    echo エラー: PyInstallerのインストールに失敗しました
+    echo [ERROR] Failed to install PyInstaller.
     pause
     exit /b 1
 )
 
 echo.
-echo ステップ 3: exeにビルド中...
-pyinstaller --onefile --windowed --icon=None monitor_display.py
+echo [Step 3] Building the .exe ...
+pyinstaller --onefile --windowed monitor_display.py
 if %errorlevel% neq 0 (
-    echo エラー: ビルドに失敗しました
+    echo [ERROR] Build failed.
     pause
     exit /b 1
 )
 
 echo.
 echo ========================================
-echo ビルド完了！
+echo Build complete!
 echo ========================================
 echo.
-echo exeファイルは以下の場所に作成されました:
+echo The .exe was created at:
 echo   dist\monitor_display.exe
 echo.
-echo このファイルをファイルサーバーに配置してください
-echo ユーザーはこれをダブルクリックして実行できます
+echo Copy this file to your file server so users can run it.
 echo.
 pause
