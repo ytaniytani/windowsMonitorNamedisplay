@@ -28,6 +28,9 @@ echo [Step 1] Compiling C# source code...
 "!CSC_PATH!" ^
   /target:winexe ^
   /out:MonitorDisplay.exe ^
+  /r:System.dll ^
+  /r:System.Drawing.dll ^
+  /r:System.Windows.Forms.dll ^
   MonitorDisplay.cs
 
 if %errorlevel% neq 0 (
