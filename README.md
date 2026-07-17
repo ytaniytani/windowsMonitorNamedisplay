@@ -1,70 +1,71 @@
 # Windows Multi-Monitor Display App
 
-Windowsマルチモニタ環境で、各モニタにそのIDと名前を大きく表示するアプリケーション。
+Displays each monitor's ID number and friendly name in large text across multiple monitors.
 
-## 機能
+## Features
 
-- 接続されているすべてのモニタを検出
-- 各モニタに専用ウィンドウで表示:
-  - **モニタ番号** (1, 2, 3...)
-  - **モニタ名** (OS設定から取得)
-  - **解像度** (横×縦ピクセル数)
-- ESCキーで終了
+- Detects all connected monitors
+- Displays on each monitor:
+  - Monitor number (1, 2, 3...)
+  - Monitor friendly name (e.g., "DELL U2720Q")
+  - Resolution (width × height in pixels)
+- Press ESC to exit
+- **No installation required** - works on any Windows 10/11 system
 
-## 使用方法
+## How to Use
 
-### 方法1: Pythonから直接実行（開発環境）
+### Step 1: Compile
 
-```bash
-pip install -r requirements.txt
-python monitor_display.py
-```
+Double-click `compile.bat`. The script will:
+- Locate the built-in C# compiler (no download needed)
+- Compile `MonitorDisplay.cs` into `MonitorDisplay.exe`
 
-### 方法2: exeとしてビルド・配布（推奨）
+### Step 2: Run
 
-#### ビルド手順
+Double-click `MonitorDisplay.exe` to display monitor info on all connected screens.
 
-1. `build.bat`をダブルクリック
-2. ビルドが完了すると `dist/monitor_display.exe` が作成されます
+### Step 3: Deploy
 
-#### ファイルサーバーへの配置
+Copy `MonitorDisplay.exe` to your file server. Users can download and run it directly - no software installation required.
 
-1. `dist/monitor_display.exe` をファイルサーバーにアップロード
-2. ユーザーに共有フォルダのパスを通知
-3. ユーザーが`monitor_display.exe`をダブルクリックして実行
+## Requirements
 
-**初回実行時の注意:**
-- Windows Defenderが「不明な発行元」と表示する場合がありますが、「実行」をクリックすれば起動します
-- IT部門が実行を許可する必要がある場合は事前に確認してください
+- Windows 10 or Windows 11
+- .NET Framework 4.5+ (built-in to Windows)
+- That's it!
 
-## ファイル構成
+## Files
 
 ```
-windows-monitor-app/
-├── monitor_display.py      # メインアプリケーション
-├── requirements.txt         # Python依存パッケージ
-├── build.bat               # exeビルドスクリプト
-└── README.md               # このファイル
+├── MonitorDisplay.cs       # C# source code
+├── compile.bat             # Build script (uses built-in Windows compiler)
+├── MonitorDisplay.exe      # Executable (generated after running compile.bat)
+└── README.md               # This file
 ```
 
-## トラブルシューティング
+## Troubleshooting
 
-### "Pythonが見つかりません" エラー
-→ https://www.python.org からPythonをインストールしてください
+### "C# compiler not found" error
+This should not happen on Windows 10/11. The compiler is at:
+```
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe
+```
+If missing, .NET Framework may need repair. Run Windows Update.
 
-### モニタが検出されない
-→ Windowsのディスプレイ設定を確認してください
+### Monitor name shows as "Monitor 1", "Monitor 2", etc.
+Windows could not retrieve friendly names from the registry. This is normal on some systems - the monitor is still detected and displayed.
 
-### exeが実行できない
-→ 会社のセキュリティポリシーを確認してください
+### The program won't start
+Ensure you're on Windows 10 or 11. Older Windows versions may have issues.
 
-## 技術仕様
+## Technical Details
 
-- **言語**: Python 3.7+
-- **GUI**: tkinter (標準ライブラリ)
-- **モニタ検出**: screeninfo
-- **ビルド**: PyInstaller
+- **Language**: C# (.NET Framework 4.5+)
+- **Compilation**: Built-in Windows C# compiler (`csc.exe`)
+- **GUI**: Windows Forms
+- **Monitor detection**: `System.Windows.Forms.Screen` class
+- **Monitor names**: Windows Registry (`HKLM\SYSTEM\CurrentControlSet\Enum\DISPLAY`)
 
-## ライセンス
+## License
 
 MIT License
