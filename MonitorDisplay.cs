@@ -1,12 +1,38 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace WindowsMonitorDisplay
 {
+    // Windows API for getting display device info
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct DISPLAY_DEVICE
+    {
+        [MarshalAs(UnmanagedType.U4)]
+        public uint cb;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+        public string DeviceName;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceString;
+        [MarshalAs(UnmanagedType.U4)]
+        public uint StateFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceID;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string DeviceKey;
+    }
+
     static class Program
     {
+        [DllImport("user32.dll")]
+        public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum,
+            ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
+
+        private static List<Form> _allForms = new List<Form>();
+
         [STAThread]
         static void Main()
         {
@@ -22,70 +48,48 @@ namespace WindowsMonitorDisplay
 
             Console.WriteLine(string.Format("Detected {0} monitor(s)", screens.Length));
 
-            List<System.Threading.Thread> threads = new List<System.Threading.Thread>();
-
             for (int i = 0; i < screens.Length; i++)
             {
                 int index = i;
                 Screen screen = screens[i];
 
-                System.Threading.Thread thread = new System.Threading.Thread(() =>
-                {
-                    MonitorForm form = new MonitorForm(index, screen);
-                    Application.Run(form);
-                });
-
-                thread.Start();
-                threads.Add(thread);
+                MonitorForm form = new MonitorForm(index, screen);
+                _allForms.Add(form);
+                form.Show();
             }
 
-            foreach (var thread in threads)
-            {
-                thread.Join();
-            }
+            Application.Run();
         }
 
-        static Dictionary<int, string> GetMonitorFriendlyNames()
+        public static void CloseAllForms()
         {
-            var result = new Dictionary<int, string>();
+            foreach (var form in _allForms.ToList())
+            {
+                if (!form.IsDisposed)
+                {
+                    form.Close();
+                }
+            }
+            Application.Exit();
+        }
+
+        public static string GetMonitorName(int index)
+        {
+            DISPLAY_DEVICE device = new DISPLAY_DEVICE();
+            device.cb = (uint)Marshal.SizeOf(device);
 
             try
             {
-                var regKey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(
-                    @"SYSTEM\CurrentControlSet\Enum\DISPLAY");
-
-                if (regKey != null)
+                if (EnumDisplayDevices(null, (uint)index, ref device, 0))
                 {
-                    int index = 0;
-                    foreach (var subKeyName in regKey.GetSubKeyNames())
+                    if (!string.IsNullOrEmpty(device.DeviceString))
                     {
-                        var subKey = regKey.OpenSubKey(subKeyName);
-                        if (subKey != null)
-                        {
-                            var friendlyName = subKey.GetValue("FriendlyName");
-                            if (friendlyName != null)
-                            {
-                                result[index] = friendlyName.ToString();
-                            }
-                            else
-                            {
-                                result[index] = string.Format("Monitor {0}", index + 1);
-                            }
-                            index++;
-                        }
+                        return device.DeviceString.Trim();
                     }
                 }
             }
             catch { }
 
-            return result;
-        }
-
-        public static string GetMonitorName(int index)
-        {
-            var names = GetMonitorFriendlyNames();
-            if (names.ContainsKey(index))
-                return names[index];
             return string.Format("Monitor {0}", index + 1);
         }
     }
@@ -104,13 +108,14 @@ namespace WindowsMonitorDisplay
             this.WindowState = FormWindowState.Maximized;
             this.BackColor = Color.FromArgb(26, 26, 46); // #1a1a2e
             this.TopMost = false;
+            this.ControlBox = false;
 
             // Move to specific monitor
             this.StartPosition = FormStartPosition.Manual;
             this.Location = screen.Bounds.Location;
             this.Size = screen.Bounds.Size;
 
-            // Create controls
+            // Monitor index label (top-left area)
             Label labelIndex = new Label
             {
                 Text = string.Format("Monitor {0}", _monitorIndex + 1),
@@ -125,6 +130,7 @@ namespace WindowsMonitorDisplay
                 Top = 100
             };
 
+            // Monitor name label (middle)
             string monitorName = Program.GetMonitorName(_monitorIndex);
             Label labelName = new Label
             {
@@ -140,6 +146,7 @@ namespace WindowsMonitorDisplay
                 Top = 320
             };
 
+            // Resolution label
             string resolution = string.Format("{0} × {1}", screen.Bounds.Width, screen.Bounds.Height);
             Label labelResolution = new Label
             {
@@ -155,16 +162,34 @@ namespace WindowsMonitorDisplay
                 Top = 500
             };
 
+            // Close button (top-right corner)
+            Button closeButton = new Button
+            {
+                Text = "×",
+                Font = new Font("Arial", 40, FontStyle.Bold),
+                ForeColor = Color.FromArgb(200, 200, 200),
+                BackColor = Color.FromArgb(26, 26, 46),
+                FlatStyle = FlatStyle.Flat,
+                Width = 80,
+                Height = 80,
+                Top = 10,
+                Left = screen.Bounds.Width - 90,
+                TabStop = false
+            };
+            closeButton.FlatAppearance.BorderSize = 0;
+            closeButton.Click += (s, e) => Program.CloseAllForms();
+
             this.Controls.Add(labelIndex);
             this.Controls.Add(labelName);
             this.Controls.Add(labelResolution);
+            this.Controls.Add(closeButton);
 
             this.KeyPreview = true;
             this.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Escape)
                 {
-                    this.Close();
+                    Program.CloseAllForms();
                     e.Handled = true;
                 }
             };
