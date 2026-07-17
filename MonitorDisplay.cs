@@ -2,35 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Management;
 using System.Windows.Forms;
 
 namespace WindowsMonitorDisplay
 {
-    // Windows API for getting display device info
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct DISPLAY_DEVICE
-    {
-        [MarshalAs(UnmanagedType.U4)]
-        public uint cb;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string DeviceName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string DeviceString;
-        [MarshalAs(UnmanagedType.U4)]
-        public uint StateFlags;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string DeviceID;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string DeviceKey;
-    }
-
     static class Program
     {
-        [DllImport("user32.dll")]
-        public static extern bool EnumDisplayDevices(string lpDevice, uint iDevNum,
-            ref DISPLAY_DEVICE lpDisplayDevice, uint dwFlags);
-
         private static List<Form> _allForms = new List<Form>();
 
         [STAThread]
@@ -75,20 +53,58 @@ namespace WindowsMonitorDisplay
 
         public static string GetMonitorName(int index)
         {
-            DISPLAY_DEVICE device = new DISPLAY_DEVICE();
-            device.cb = (uint)Marshal.SizeOf(device);
-
             try
             {
-                if (EnumDisplayDevices(null, (uint)index, ref device, 0))
+                // Try WMI approach
+                using (var searcher = new ManagementObjectSearcher(
+                    "SELECT * FROM WmiMonitorBasicDisplayParams"))
                 {
-                    if (!string.IsNullOrEmpty(device.DeviceString))
+                    int count = 0;
+                    foreach (ManagementObject queryObj in searcher.Get())
                     {
-                        return device.DeviceString.Trim();
+                        if (count == index)
+                        {
+                            // Get the device name from the instance name
+                            string instanceName = queryObj["InstanceName"].ToString();
+                            if (!string.IsNullOrEmpty(instanceName))
+                            {
+                                return instanceName;
+                            }
+                        }
+                        count++;
                     }
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("WMI error: {0}", ex.Message));
+            }
+
+            // Fallback: Try PnP device name
+            try
+            {
+                using (var searcher = new ManagementObjectSearcher(
+                    "SELECT * FROM Win32_PnPDevice WHERE DeviceID LIKE '%DISPLAY%'"))
+                {
+                    int count = 0;
+                    foreach (ManagementObject queryObj in searcher.Get())
+                    {
+                        if (count == index)
+                        {
+                            string name = queryObj["Name"].ToString();
+                            if (!string.IsNullOrEmpty(name))
+                            {
+                                return name;
+                            }
+                        }
+                        count++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("PnP error: {0}", ex.Message));
+            }
 
             return string.Format("Monitor {0}", index + 1);
         }

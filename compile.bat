@@ -31,6 +31,7 @@ echo [Step 1] Compiling C# source code...
   /r:System.dll ^
   /r:System.Drawing.dll ^
   /r:System.Windows.Forms.dll ^
+  /r:System.Management.dll ^
   MonitorDisplay.cs
 
 if %errorlevel% neq 0 (
